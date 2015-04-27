@@ -55,7 +55,7 @@ int count = 0;
 
 /* Set structures for history and alias, get original path, set directory to home and 
 load alias */
-char* startUp(history_t *hist[], alias_t *alias[]) {
+char* startUp() {
 	return strdup(getenv("PATH"));
 }
 
@@ -84,7 +84,7 @@ void flushInput(char in[]) {
 }
 
 /* Read Input and deal with appropriately */
-int readInput(history_t *hist[], char in[], int count, int i) {
+int readInput(char in[], int count, int i) {
 	char *tok, *tokens[50];
 	int a;
 	
@@ -120,7 +120,7 @@ int main(int argc, char *argv[]) {
 	int i, inputResult;
 	char *path = "", str[513];
 	
-	path = startUp(history, alias);
+	path = startUp();
 	do {
 		i = 0;
 		printf("\n>");
@@ -129,7 +129,7 @@ int main(int argc, char *argv[]) {
 			break;
 		
 		flushInput(str);
-		inputResult = readInput(history, str, count, i);
+		inputResult = readInput(str, count, i);
 		
 		if(inputResult == -1)
 			break;
