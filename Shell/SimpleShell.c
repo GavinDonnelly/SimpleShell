@@ -96,15 +96,174 @@ void pHistory(history_t *hist[]) {
 	}
 }
 
+/* Set, Overwrite or Print alias function */
+void aliasCommand(history_t *hist[], int count, alias_t *alias[]) {
+	int i = 0;
+	int j = 0; 
+	int y = 0;
+	int flag = 1;
+
+	if (hist[count]->tokens[1] == NULL) {
+		flag = 0;
+		
+   		if (aliList == 0) 
+      		printf("\nNo aliases have been set\n");
+		else
+			printf("\n");
+			for(i = 0; i < aliList; i++)
+			{
+				printf("Alias #%d:\t", i+1);		 		
+				printf("%s aliases ", alias[i]->ali[0]);
+				for(j = 0; j < 50; j++) {
+					if(alias[i]->com[j] == NULL)
+						break;
+					printf("%s ", alias[i]->com[j]);
+				}
+				printf("\n");
+			}   
+	} 
+    
+	if(aliList == 10) {
+		flag = 0;
+		printf("\n10 aliases are set, aliases are full\n");
+	}
+
+	if(flag == 1) { 
+		for(i = 0; i < 10; i++) {
+				if(alias[i]->ali[0] == NULL)
+					break;
+				if(strcmp(hist[count]->tokens[1], alias[i]->ali[0]) == 0) {
+					alias[i]->ali[0] = strdup(hist[count]->tokens[1]);
+					flag = 0;
+					for(y = 2; y < 50; y++) {
+						if(hist[count]->tokens[y] == NULL)
+							break;
+	       				alias[i]->com[y-2] = strdup(hist[count]->tokens[y]);}
+				}
+		}
+		if(flag == 0){
+		printf("\nalias has been overriden, %s aliases ", 
+									hist[count]->tokens[1]); 
+		for(y = 2; y < 50; y++) {
+			if(hist[count]->tokens[y] == NULL)
+				break;					
+			printf("%s ", hist[count]->tokens[y]);
+		}
+		printf("\n");
+		}
+	}	
+	
+	if(flag == 1) {
+		alias[aliList]->ali[0] = strdup(hist[count]->tokens[1]);
+		for(y = 2; y < 50; y++) {
+			if(hist[count]->tokens[y] == NULL)
+				break;
+			alias[i]->com[y-2] = strdup(hist[count]->tokens[y]);
+		}
+		aliList++;
+	   	printf("\nalias has been set, %s aliases ", hist[count]->tokens[1]);
+		for(y = 2; y < 50; y++) {
+			if(hist[count]->tokens[y] == NULL)
+				break;					
+		printf("%s ", hist[count]->tokens[y]);}
+		printf("\n");
+	
+	}
+
+
+}
+
+/* Unalias function - Removes selected alias and shifts list accordingly*/
+void removeAlias(history_t *hist[], int count, alias_t *alias[]) {
+	int i, y, flag = 0, shiftPos = 0;
+
+	for(i = 0; i < aliList; i++) 
+	{
+		if(alias[i]->ali[0] == NULL)
+					break;
+		if(strcmp(hist[count]->tokens[1], alias[i]->ali[0]) == 0) {
+			shiftPos = i;
+			flag = 1;
+		}
+
+	}
+		
+	for(i = shiftPos; i < aliList-1; i++) 
+	{
+		alias[i]->ali[0] = strdup(alias[i+1]->ali[0]);
+	  		for(y = 0; y < 50; y++){
+				if(alias[i]->com[y] == NULL)
+					break;
+				alias[i]->com[y] = strdup(alias[i+1]->com[y]);
+			}
+	}
+	aliList = aliList -1;
+
+	if(flag == 0)
+		printf("\nNo aliases of %s were found\n", hist[count]->tokens[1]);
+
+}
+
+/* Function checks the user command to see if it is an alias for another command so it
+	can deal with the command correctly */ 
+void checkAlias(history_t *hist[], int count, alias_t *alias[]) {
+	
+	int i = 0;
+	int y = 0;
+	int comCount = 0;
+
+	for(i = 0; i < aliList; i++){
+		if(alias[i]->ali[0] == NULL)
+					break;
+		if(strcmp(hist[count]->tokens[0], alias[i]->ali[0]) == 0){
+			for(y = 0; y < 50; y++){
+				if(alias[i]->com[y] == NULL)
+					break;
+			comCount++;}
+
+			if(comCount == 1){
+				for(y = 0; y < 50; y++){
+					if(alias[i]->com[y] == NULL)
+						break;
+				hist[count]->tokens[y] = strdup(alias[i]->com[y]);
+		
+				}
+			}
+			
+			else{
+				
+				for(y = 1; y < comCount; y++){
+					hist[count]->tokens[y+1] = strdup(hist[count]->tokens[y]);
+				}
+				
+				for(y = 0; y < 50; y++){
+					if(alias[i]->com[y] == NULL)
+						break;	
+					hist[count]->tokens[y] = strdup(alias[i]->com[y]);
+					
+				}
+			}
+		}		
+	}
+}
+
 /* Set structures for history and alias, get original path, set directory to home and 
 load alias */
-char* startUp(history_t *hist[]) {
+char* startUp(history_t *hist[], alias_t *alias[]) {
 	int i, y;
 	
 	for(i = 0; i < 20; i++) {
 		hist[i] = malloc(sizeof(history_t));
 		hist[i]->count = i;
 		hist[i]->inUse = 0;
+	}
+
+	for(i = 0; i < 10; i++) {
+		alias[i] = malloc(sizeof(alias_t));
+		for(y=0; y<50; y++) {
+			alias[i]->ali[y] = NULL;
+			alias[i]->com[y] = NULL;
+		}
 	}
 
 	chdir(getenv("HOME"));
@@ -158,8 +317,11 @@ void execOther(history_t *hist[], int count) {
 }
 
 /* check users command for exactable function commands, otherwise fork */
-void execCommand(history_t *hist[], int count) {
+void execCommand(history_t *hist[], int count, alias_t *alias[]) {
 	char *number;
+
+	checkAlias(hist, count, alias);
+
 	if(hist[count]->tokens[0] != NULL) {
 		
 		if(strcmp(hist[count]->tokens[0], "cd") == 0) 
@@ -170,17 +332,17 @@ void execCommand(history_t *hist[], int count) {
 			
 		else if(strcmp(hist[count]->tokens[0], "!!") == 0) {
 			if(count != 0)
-				execCommand(hist, count - 1);
+				execCommand(hist, count - 1, alias);
 				
 			else if(hist[19]->inUse == 1)
-				execCommand(hist, 19);
+				execCommand(hist, 19, alias);
 		}
 		
 		else if(hist[count]->tokens[0][0] == '!') {
 			number = strtok(hist[count]->tokens[0], "! \t\n");
 			
 			if(*number - '0' >= 1 && *number - '0' <= 20) 
-				execCommand(hist, *number - '0' - 1);
+				execCommand(hist, *number - '0' - 1, alias);
 			else
 				printf("\nIncorrect formatting: !<no>, where no is between 1 and 20\n");
 		}
@@ -193,7 +355,15 @@ void execCommand(history_t *hist[], int count) {
 			
 		else if(strcmp(hist[count]->tokens[0], "setpath") == 0)
 			setPath(hist[count]->tokens[1]);
+
+		else if (strcmp(hist[count]->tokens[0], "alias") == 0) 
+         
+			aliasCommand(hist, count, alias);
 		
+		else if (strcmp(hist[count]->tokens[0], "unalias") == 0) 
+			
+			removeAlias(hist, count,alias);
+
 		else 
 			execOther(hist, count);
 	}
@@ -278,8 +448,9 @@ int main(int argc, char *argv[]) {
 	int i, inputResult;
 	char *path = "", str[513];
 	history_t *history[20] = { NULL };
+	alias_t *alias[10] = { NULL };
 	
-	path = startUp(history);
+	path = startUp(history, alias);
 	do {
 		i = 0;
 		printf("\n>");
@@ -294,7 +465,7 @@ int main(int argc, char *argv[]) {
 			break;
 		
 		else if(inputResult == -2) {
-			execCommand(history, count);
+			execCommand(history, count, alias);
 			history[count]->inUse = 1;
 			count = (count + 1) % 20;
 		}
@@ -303,7 +474,7 @@ int main(int argc, char *argv[]) {
 			continue;
 
 		else if(inputResult >= 0)
-			execCommand(history, inputResult);
+			execCommand(history, inputResult, alias);
 	
 	} while(1);
 	printf("\n");
